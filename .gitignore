@@ -12,6 +12,9 @@ venv/
 # Qdrant data
 qdrant_storage/
 
+# Uploaded documents
+backend/uploads/
+
 # Node / frontend
 node_modules/
 dist/

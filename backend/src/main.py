@@ -1,15 +1,18 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-6
-from src.config import settings
 
-app = FastAPI()
-
-
-@app.get("/")
-def root():
-    return {"status": "ok"}
+from src.db import init_db
+from src.routers import health, upload
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("src.main:app", host="0.0.0.0", port=settings.port, reload=True)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(health.router)
+app.include_router(upload.router)

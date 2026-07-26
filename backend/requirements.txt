@@ -4,3 +4,5 @@ pydantic-settings
 python-dotenv
 qdrant-client
 python-multipart
+sqlmodel
+psycopg2-binary

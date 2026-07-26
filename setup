@@ -1,7 +1,0 @@
-Setup python
-version check: python --version
-setup venv: python -m venv <name of venv (keep .venv for now)> 
-tp activate =>  C:\Users\Public\Desktop\RAG\.venv\Scripts\Activate.ps1 (present inside .venv/Scripts)
-install uvicorn for server
-
-
