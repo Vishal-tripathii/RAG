@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / secrets
+.env
+*.env
+!.env.example
+
+# Qdrant data
+qdrant_storage/
+
+# Node / frontend
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
