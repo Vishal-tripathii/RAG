@@ -6,3 +6,5 @@ qdrant-client
 python-multipart
 sqlmodel
 psycopg2-binary
+pdfplumber
+langchain-text-splitters

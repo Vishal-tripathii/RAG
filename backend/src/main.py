@@ -1,9 +1,17 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from src.db import init_db
 from src.routers import health, upload
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True,
+)
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
