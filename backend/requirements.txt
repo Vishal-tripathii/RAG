@@ -8,3 +8,4 @@ sqlmodel
 psycopg2-binary
 pdfplumber
 langchain-text-splitters
+sentence-transformers

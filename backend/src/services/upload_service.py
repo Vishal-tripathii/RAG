@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from src.db import engine
 from src.models import Chunk, Document
 from src.services.chunking_service import chunk_pages
+from src.services.embedding_service import embed_chunks
 from src.services.pdf_service import extract_pages
 from src.utils.filenames import sanitize_filename
 
@@ -28,6 +29,17 @@ async def handle_upload(file: UploadFile) -> dict:
     for chunk in chunks:
         logger.debug("chunk %d: %s", chunk.chunk_index + 1, chunk.text)
 
+    # embeddings aren't persisted yet (that's the Qdrant upsert step) - this is
+    # just to inspect the shape of what embed_chunks produces.
+    embeddings = embed_chunks(chunks)
+    for chunk, embedding in zip(chunks, embeddings):
+        logger.debug(
+            "chunk %d embedding (dim=%d): %s...",
+            chunk.chunk_index + 1,
+            len(embedding),
+            embedding[:4],
+        )
+
     safe_filename = sanitize_filename(Path(file.filename).name)
     save_path = UPLOAD_DIR / f"{doc_id}_{safe_filename}"
     save_path.write_bytes(contents)
@@ -41,6 +53,7 @@ async def handle_upload(file: UploadFile) -> dict:
     )
     with Session(engine) as session:
         session.add(document)
+        session.flush()  # document must exist before chunks are inserted (chunk.document_id FK)
         session.add_all(chunks)
         session.commit()
 
