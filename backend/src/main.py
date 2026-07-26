@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from src.db import init_db
 from src.routers import health, upload
+from src.vector_store import init_collection
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -17,6 +18,7 @@ logging.getLogger("pdfminer").setLevel(logging.WARNING)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_collection()
     yield
 
 

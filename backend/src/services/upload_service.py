@@ -11,6 +11,7 @@ from src.services.chunking_service import chunk_pages
 from src.services.embedding_service import embed_chunks
 from src.services.pdf_service import extract_pages
 from src.utils.filenames import sanitize_filename
+from src.vector_store import delete_all_points, delete_by_document_id, upsert_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -26,19 +27,10 @@ async def handle_upload(file: UploadFile) -> dict:
     chunks = chunk_pages(pages, document_id=doc_id)
 
     logger.info("Extracted %d pages, %d chunks from %s", len(pages), len(chunks), file.filename)
-    for chunk in chunks:
-        logger.debug("chunk %d: %s", chunk.chunk_index + 1, chunk.text)
 
-    # embeddings aren't persisted yet (that's the Qdrant upsert step) - this is
-    # just to inspect the shape of what embed_chunks produces.
     embeddings = embed_chunks(chunks)
-    for chunk, embedding in zip(chunks, embeddings):
-        logger.debug(
-            "chunk %d embedding (dim=%d): %s...",
-            chunk.chunk_index + 1,
-            len(embedding),
-            embedding[:4],
-        )
+    upsert_chunks(chunks, embeddings)
+    logger.info("Upserted %d vectors into Qdrant", len(chunks))
 
     safe_filename = sanitize_filename(Path(file.filename).name)
     save_path = UPLOAD_DIR / f"{doc_id}_{safe_filename}"
@@ -76,4 +68,23 @@ def delete_all_documents() -> int:
         for document in documents:
             session.delete(document)
         session.commit()
-        return len(documents)
+
+    delete_all_points()
+    return len(documents)
+
+
+def delete_document(doc_id: str) -> bool:
+    with Session(engine) as session:
+        document = session.get(Document, doc_id)
+        if document is None:
+            return False
+
+        chunks = session.exec(select(Chunk).where(Chunk.document_id == doc_id)).all()
+        for chunk in chunks:
+            session.delete(chunk)
+
+        session.delete(document)
+        session.commit()
+
+    delete_by_document_id(doc_id)
+    return True
