@@ -13,7 +13,7 @@ from src.config import settings
 from src.models import Chunk
 
 COLLECTION_NAME = "chunks"
-VECTOR_SIZE = 384  # must match embedding_service's model (all-MiniLM-L6-v2) - changing models means recreating this collection
+VECTOR_SIZE = 384  # must match embedding_service's model (BAAI/bge-small-en-v1.5) - changing models means recreating this collection
 
 client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
