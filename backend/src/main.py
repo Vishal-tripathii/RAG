@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.db import init_db
-from src.routers import health, upload
+from src.routers import health, search, upload
 from src.vector_store import init_collection
 
 logging.basicConfig(
@@ -26,3 +26,4 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(health.router)
 app.include_router(upload.router)
+app.include_router(search.router)
