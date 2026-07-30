@@ -14,7 +14,7 @@ from src.config import settings
 from src.models import Chunk
 
 COLLECTION_NAME = "chunks"
-VECTOR_SIZE = 384  # must match embedding_service's model (all-MiniLM-L6-v2) - changing models means recreating this collection
+VECTOR_SIZE = 384  # must match embedding_service's model (BAAI/bge-small-en-v1.5) - changing models means recreating this collection
 
 client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
@@ -43,6 +43,20 @@ def upsert_chunks(chunks: list[Chunk], embeddings: list[list[float]]) -> None:
         for chunk, embedding in zip(chunks, embeddings)
     ]
     client.upsert(collection_name=COLLECTION_NAME, points=points)
+
+
+def search(vector: list[float], limit: int, score_threshold: float | None = None) -> list[ScoredPoint]:
+    # query_points returns a wrapper object; the hits themselves are on .points
+    response = client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=vector,
+        limit=limit,
+        with_payload=True,  # the chunk text lives in the payload, not the vector
+        # None means "no floor" - Qdrant then returns its best `limit` matches
+        # however weak they are. Applied server-side, so weak hits cost nothing.
+        score_threshold=score_threshold,
+    )
+    return response.points
 
 
 def delete_all_points() -> None:

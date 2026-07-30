@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.db import init_db
-from src.routers import health, query, upload
+from src.routers import health, search, query, upload
 from src.vector_store import init_collection
 
 logging.basicConfig(

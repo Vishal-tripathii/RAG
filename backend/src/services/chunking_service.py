@@ -1,4 +1,7 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# Imported from the submodule rather than the package root: the package's
+# __init__ eagerly imports its sentence-transformers splitter, which drags in
+# torch even though we don't use it.
+from langchain_text_splitters.character import RecursiveCharacterTextSplitter
 
 from src.models import Chunk
 from src.utils.text_cleaning import clean_text
