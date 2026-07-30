@@ -9,6 +9,13 @@ from src.models import Chunk
 # everything.
 model = TextEmbedding("BAAI/bge-small-en-v1.5")
 
+# bge-*-en-v1.5 is trained for asymmetric retrieval: the query side carries this
+# instruction prefix and the stored passages do not. fastembed does not apply it
+# for this model - its query_embed() falls straight through to plain embed() - so
+# it has to be prepended here. Without it, short queries score measurably worse
+# against the passages they should match.
+QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     # embed() is lazy - it returns a generator of numpy arrays, so this has to
@@ -24,8 +31,4 @@ def embed_query(query: str) -> list[float]:
     # Deliberately routed through the same embed_texts as the ingest side: a
     # query embedded by a different model than the stored chunks would still
     # return results, just meaningless ones, with nothing to signal the bug.
-    return embed_texts([query])[0]
-
-
-def embed_text(text: str) -> list[float]:
-    return model.encode(text).tolist()
+    return embed_texts([QUERY_PREFIX + query])[0]

@@ -51,7 +51,6 @@ def search(vector: list[float], limit: int, score_threshold: float | None = None
         collection_name=COLLECTION_NAME,
         query=vector,
         limit=limit,
-        with_payload=True,  # the chunk text lives in the payload, not the vector
         # None means "no floor" - Qdrant then returns its best `limit` matches
         # however weak they are. Applied server-side, so weak hits cost nothing.
         score_threshold=score_threshold,
@@ -73,12 +72,3 @@ def delete_by_document_id(document_id: str) -> None:
             filter=Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
         ),
     )
-
-
-def search(query_vector: list[float], top_k: int = 5) -> list[ScoredPoint]:
-    response = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        limit=top_k,
-    )
-    return response.points
