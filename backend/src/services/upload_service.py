@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import UploadFile
 from fastapi.concurrency import run_in_threadpool
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from src.db import engine
 from src.models import Chunk, Document
@@ -67,6 +67,40 @@ def _ingest(filename: str | None, content_type: str | None, contents: bytes) -> 
         "content_type": content_type,
         "size_bytes": len(contents),
         "saved_path": str(save_path),
+    }
+
+
+def list_documents() -> list[dict]:
+    with Session(engine) as session:
+        documents = session.exec(select(Document)).all()
+        # One grouped query rather than a per-document COUNT.
+        counts = dict(
+            session.exec(
+                select(Chunk.document_id, func.count()).group_by(Chunk.document_id)
+            ).all()
+        )
+        return [_document_summary(document, counts.get(document.doc_id, 0)) for document in documents]
+
+
+def get_document(doc_id: str) -> dict | None:
+    with Session(engine) as session:
+        document = session.get(Document, doc_id)
+        if document is None:
+            return None
+        chunk_count = session.exec(
+            select(func.count()).where(Chunk.document_id == doc_id)
+        ).one()
+        return _document_summary(document, chunk_count)
+
+
+def _document_summary(document: Document, chunk_count: int) -> dict:
+    return {
+        "doc_id": document.doc_id,
+        "filename": document.filename,
+        "content_type": document.content_type,
+        "size_bytes": document.size_bytes,
+        "uploaded_at": document.uploaded_at,
+        "chunks": chunk_count,
     }
 
 

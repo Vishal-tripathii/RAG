@@ -1,6 +1,12 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from src.services.upload_service import delete_all_documents, delete_document, handle_upload
+from src.services.upload_service import (
+    delete_all_documents,
+    delete_document,
+    get_document,
+    handle_upload,
+    list_documents,
+)
 
 router = APIRouter()
 
@@ -8,6 +14,19 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     return await handle_upload(file)
+
+
+@router.get("/documents")
+def list_documents_endpoint():
+    return {"documents": list_documents()}
+
+
+@router.get("/documents/{doc_id}")
+def get_document_endpoint(doc_id: str):
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
 
 
 # Plain `def`, not `async def`: both of these do blocking Postgres and Qdrant
