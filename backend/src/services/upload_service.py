@@ -104,6 +104,16 @@ def _document_summary(document: Document, chunk_count: int) -> dict:
     }
 
 
+def get_filenames(doc_ids: list[str]) -> dict[str, str]:
+    if not doc_ids:
+        return {}
+    with Session(engine) as session:
+        rows = session.exec(
+            select(Document.doc_id, Document.filename).where(Document.doc_id.in_(doc_ids))
+        ).all()
+        return dict(rows)
+
+
 def delete_all_documents() -> int:
     with Session(engine) as session:
         chunks = session.exec(select(Chunk)).all()

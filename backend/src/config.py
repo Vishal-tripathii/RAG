@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # specific number. A per-request top_k still overrides this.
     search_top_k: int = 3
 
+    # No default - /ask fails loudly at call time if this is unset rather than
+    # silently trying an empty key.
+    gemini_api_key: str = ""
+
     postgres_host: str = "localhost"
     postgres_port: int = 5431
     postgres_user: str = "postgres"
