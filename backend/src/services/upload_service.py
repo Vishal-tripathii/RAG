@@ -1,8 +1,9 @@
+import hashlib
 import logging
 import uuid
 from pathlib import Path
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session, func, select
 
@@ -33,6 +34,22 @@ async def handle_upload(file: UploadFile) -> dict:
 
 
 def _ingest(filename: str | None, content_type: str | None, contents: bytes) -> dict:
+    # Hashes the bytes already sitting in memory from the single file.read()
+    # in handle_upload - no re-read from disk. Checked before any of the
+    # expensive work below (PDF parsing, chunking, embedding, Qdrant upsert)
+    # so a re-uploaded file short-circuits immediately instead of paying for
+    # all of that just to produce chunks identical to ones already indexed.
+    content_hash = hashlib.sha256(contents).hexdigest()
+    with Session(engine) as session:
+        existing = session.exec(
+            select(Document).where(Document.content_hash == content_hash)
+        ).first()
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This file was already uploaded as doc_id={existing.doc_id!r} ({existing.filename!r})",
+        )
+
     doc_id = str(uuid.uuid4())
 
     pages = extract_pages(contents)  # raises 400 if nothing extractable (e.g. scanned PDF)
@@ -54,6 +71,7 @@ def _ingest(filename: str | None, content_type: str | None, contents: bytes) -> 
         content_type=content_type,
         size_bytes=len(contents),
         saved_path=str(save_path),
+        content_hash=content_hash,
     )
     with Session(engine) as session:
         session.add(document)

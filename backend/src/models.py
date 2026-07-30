@@ -11,6 +11,10 @@ class Document(SQLModel, table=True):
     content_type: str
     size_bytes: int
     saved_path: str
+    # SHA-256 of the raw file bytes. Indexed + unique so "has this exact file
+    # already been uploaded" is one B-tree lookup, not a table scan - and so
+    # the database itself rejects a duplicate insert if two requests race.
+    content_hash: str = Field(index=True, unique=True)
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
 
 
