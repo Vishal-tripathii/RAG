@@ -14,3 +14,7 @@ def embed_chunks(chunks: list[Chunk]) -> list[list[float]]:
     texts = [chunk.text for chunk in chunks]
     embeddings = model.encode(texts)
     return embeddings.tolist()
+
+
+def embed_text(text: str) -> list[float]:
+    return model.encode(text).tolist()

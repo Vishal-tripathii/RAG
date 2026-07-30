@@ -6,6 +6,7 @@ from qdrant_client.models import (
     FilterSelector,
     MatchValue,
     PointStruct,
+    ScoredPoint,
     VectorParams,
 )
 
@@ -58,3 +59,12 @@ def delete_by_document_id(document_id: str) -> None:
             filter=Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
         ),
     )
+
+
+def search(query_vector: list[float], top_k: int = 5) -> list[ScoredPoint]:
+    response = client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=query_vector,
+        limit=top_k,
+    )
+    return response.points
