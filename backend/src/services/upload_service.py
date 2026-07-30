@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session, select
 
 from src.db import engine
@@ -20,26 +21,37 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 async def handle_upload(file: UploadFile) -> dict:
-    doc_id = str(uuid.uuid4())
     contents = await file.read()
+
+    # Everything past this point is blocking and never awaits: pdfplumber
+    # parsing, ONNX inference, psycopg2, and Qdrant's HTTP client. Run inline in
+    # an async handler it all executes on the event loop, so a single upload
+    # stalls every other request for the full duration of the ingest. Handing it
+    # to the threadpool is what FastAPI already does for sync handlers - this
+    # route only has to stay async because reading the body needs await.
+    return await run_in_threadpool(_ingest, file.filename, file.content_type, contents)
+
+
+def _ingest(filename: str | None, content_type: str | None, contents: bytes) -> dict:
+    doc_id = str(uuid.uuid4())
 
     pages = extract_pages(contents)  # raises 400 if nothing extractable (e.g. scanned PDF)
     chunks = chunk_pages(pages, document_id=doc_id)
 
-    logger.info("Extracted %d pages, %d chunks from %s", len(pages), len(chunks), file.filename)
+    logger.info("Extracted %d pages, %d chunks from %s", len(pages), len(chunks), filename)
 
     embeddings = embed_chunks(chunks)
     upsert_chunks(chunks, embeddings)
     logger.info("Upserted %d vectors into Qdrant", len(chunks))
 
-    safe_filename = sanitize_filename(Path(file.filename).name)
+    safe_filename = sanitize_filename(Path(filename).name)
     save_path = UPLOAD_DIR / f"{doc_id}_{safe_filename}"
     save_path.write_bytes(contents)
 
     document = Document(
         doc_id=doc_id,
-        filename=file.filename,
-        content_type=file.content_type,
+        filename=filename,
+        content_type=content_type,
         size_bytes=len(contents),
         saved_path=str(save_path),
     )
@@ -51,8 +63,8 @@ async def handle_upload(file: UploadFile) -> dict:
 
     return {
         "doc_id": doc_id,
-        "filename": file.filename,
-        "content_type": file.content_type,
+        "filename": filename,
+        "content_type": content_type,
         "size_bytes": len(contents),
         "saved_path": str(save_path),
     }
