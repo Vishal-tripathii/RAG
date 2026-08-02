@@ -65,45 +65,49 @@ testable via curl *before* wiring the frontend to it.
 
 ## Frontend routes
 
+Switched to react-router's **data router** API (`createBrowserRouter` + `<RouterProvider>`)
+instead of `<BrowserRouter><Routes>`, and expanded from one protected page to a multi-page app
+under a shared `AppLayout` (nav + `<Outlet/>`). `/login` sits outside `AppLayout` as its own
+top-level route — a logged-out visitor shouldn't see the authenticated nav.
+
 | Route | Access | Shows |
 |---|---|---|
-| `/login` | public | Login form, with a toggle/tab to switch to a Register form on the same route (not a separate page — matches "login route will show login and register here as well") |
-| `/` | protected (any logged-in role) | Homepage: chat UI against `/ask`. Admins additionally see a documents-management panel (upload/list/delete) |
+| `/login` | public | Login form + Register form (currently both shown at once, stateless — no toggle wired yet) |
+| `/` (index) | protected (any logged-in role) | Home |
+| `/chat` | protected (any logged-in role) | Chat UI against `/ask` |
+| `/documents` | protected, **admin-only** | Document list (view/delete) |
+| `/upload` | protected, **admin-only** | Upload form |
+| `/settings` | protected (any logged-in role) | tbd |
 
-Redirect rules: unauthenticated visit to `/` → bounce to `/login`. Authenticated visit to `/login`
-→ bounce to `/`. Both handled by a small `ProtectedRoute` / `PublicOnlyRoute` wrapper around
-`react-router-dom` routes.
+Route guarding isn't wired yet — every route above is currently reachable by anyone. Once auth
+exists, the data-router API lets guards live as `loader`s (`redirect()` before render) instead of
+a `ProtectedRoute` wrapper component — decide which when Phase 3/4 gets there. Admin-only routes
+(`/documents`, `/upload`) still need a role check somewhere (loader or in-component) once roles
+exist.
 
-## Frontend structure (target — build incrementally, see Phases)
+## Frontend structure (current — see `src/` for the live version, this is a snapshot)
 
 ```
 frontend/
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx                 # <BrowserRouter> + <AuthProvider> + route table
-│   ├── context/
-│   │   └── AuthContext.tsx     # token + user in state, persisted to localStorage;
-│   │                           # exposes login(), register(), logout(), current user/role
-│   ├── routes/
-│   │   ├── ProtectedRoute.tsx  # redirects to /login if not authenticated
-│   │   └── PublicOnlyRoute.tsx # redirects to / if already authenticated
+│   ├── App.tsx                 # <RouterProvider router={router} />
+│   ├── app/
+│   │   ├── router.tsx           # createBrowserRouter config: /login (top-level) + / (AppLayout,
+│   │   │                        # with index/chat/documents/upload/settings as children)
+│   │   └── AppLayout.tsx        # nav (Home/Chat/Documents/Upload/Settings) + <Outlet/>
 │   ├── pages/
-│   │   ├── LoginPage.tsx       # hosts LoginForm / RegisterForm, toggled by local state
-│   │   └── HomePage.tsx        # chat UI; renders DocumentsPanel too if role === 'admin'
-│   ├── api/
-│   │   ├── client.ts           # fetch wrapper: base URL, attaches Authorization header,
-│   │   │                       # turns non-2xx into typed errors, handles 401 (logout + redirect)
-│   │   ├── auth.ts             # login(), register(), me()
-│   │   └── documents.ts        # uploadFile, listDocuments, deleteDocument, deleteAllDocuments
-│   ├── types.ts                # User, Role, Document, AskResponse, Source
+│   │   ├── LoginPage.tsx        # hosts LoginForm + RegisterForm
+│   │   ├── Home.tsx / Chat.tsx / Documents.tsx / Upload.tsx / Settings.tsx  # placeholders so far
+│   │   └── NotFound.tsx         # router's errorElement
 │   ├── components/
-│   │   ├── LoginForm.tsx
-│   │   ├── RegisterForm.tsx
-│   │   ├── ChatPanel.tsx       # query input + turn history {query, answer, sources}
-│   │   ├── SourceList.tsx
-│   │   ├── DocumentsPanel.tsx  # admin-only: upload form + document list + delete
-│   │   └── UploadForm.tsx
-│   └── styles.css
+│   │   ├── LoginForm.tsx        # stateless so far — no onChange/onSubmit yet
+│   │   └── RegisterForm.tsx     # same
+│   ├── context/                 # not built yet — AuthContext lands with Phase 3
+│   ├── api/                     # not built yet — client.ts / auth.ts / documents.ts land as
+│   │                            # each phase needs them
+│   ├── types.ts                 # not built yet
+│   └── App.css
 ```
 
 ## Phases (build and review one at a time)
