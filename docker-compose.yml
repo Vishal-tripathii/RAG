@@ -1,0 +1,46 @@
+name: rag
+
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: rag-postgres
+    restart: unless-stopped
+    # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB are read straight from the
+    # same file the backend reads, so the credentials here and the ones in
+    # settings.database_url can't drift apart.
+    env_file: ./backend/.env
+    ports:
+      # 5431 on the host, not 5432 - matches POSTGRES_PORT in backend/.env and
+      # leaves the default port free for any locally installed Postgres.
+      - "5431:5432"
+    volumes:
+      # Mounted at the PARENT of PGDATA. Postgres 18 puts its cluster in
+      # /var/lib/postgresql/18/docker, which is the layout already inside this
+      # volume; mounting at /var/lib/postgresql/data instead would initialise a
+      # second, empty cluster and the existing rows would look lost.
+      - rag-postgres-data:/var/lib/postgresql
+    healthcheck:
+      # $$ escapes compose interpolation so the container's own shell expands these.
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  qdrant:
+    image: qdrant/qdrant:v1.18.3
+    container_name: rag-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      # Bind mount, not a named volume: this is the qdrant_storage/ directory
+      # already in the project root holding the "chunks" collection.
+      - ./qdrant_storage:/qdrant/storage
+
+volumes:
+  rag-postgres-data:
+    # external: this volume was created by hand before this file existed and
+    # holds the real data. Without this, compose would create a new, empty
+    # volume named rag_rag-postgres-data and the app would boot to zero rows.
+    external: true
